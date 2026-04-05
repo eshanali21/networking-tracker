@@ -1,4 +1,3 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { google } = require('googleapis');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -34,9 +33,6 @@ const HOW_MET_OPTIONS = ['Brown', 'Consulting', 'Entrepreneurship', 'Recruiting'
 // ─── Gemini extraction ────────────────────────────────────────────────────────
 
 async function extractContact(transcript, today) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
   const prompt = `Today's date is ${today}.
 
 You are a contact extraction assistant. Extract structured information from the following voice transcript and return ONLY a valid JSON object — no prose, no markdown, no code fences.
@@ -68,8 +64,25 @@ Transcript:
 
 Return only the JSON object.`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1 },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json();
+  const text = data.candidates[0].content.parts[0].text.trim();
 
   // Strip any accidental markdown fences
   const clean = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
