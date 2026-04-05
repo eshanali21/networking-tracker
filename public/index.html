@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Network" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>Network</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 20px 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #f8fafc;
+    }
+
+    header .subtitle {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .main {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid #334155;
+    }
+
+    .card label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 160px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #e2e8f0;
+      font-size: 16px;
+      line-height: 1.6;
+      resize: none;
+      font-family: inherit;
+    }
+
+    textarea::placeholder {
+      color: #475569;
+    }
+
+    .mic-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #334155;
+      font-size: 12px;
+      color: #475569;
+    }
+
+    .mic-hint svg {
+      flex-shrink: 0;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-submit:active { transform: scale(0.98); background: #4f46e5; }
+    .btn-submit:disabled { background: #334155; color: #64748b; cursor: not-allowed; transform: none; }
+
+    .btn-submit .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast / result banner */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 16px;
+      right: 16px;
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 14px 16px;
+      border: 1px solid #334155;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      transform: translateY(120px);
+      opacity: 0;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+      z-index: 100;
+    }
+
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    #toast.success { border-color: #22c55e; }
+    #toast.error { border-color: #ef4444; }
+
+    #toast .toast-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    #toast.success .toast-title { color: #22c55e; }
+    #toast.error .toast-title { color: #ef4444; }
+
+    #toast .toast-body {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    #toast .toast-missing {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #334155;
+      font-size: 12px;
+      color: #f59e0b;
+    }
+
+    /* Duplicate modal */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+      padding: 0;
+    }
+
+    #modal-overlay.show { display: flex; }
+
+    #modal {
+      background: #1e293b;
+      border-radius: 24px 24px 0 0;
+      padding: 20px;
+      width: 100%;
+      max-height: 85dvh;
+      overflow-y: auto;
+      border-top: 1px solid #334155;
+    }
+
+    #modal h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 4px;
+    }
+
+    #modal .modal-sub {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 16px;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .compare-col {
+      background: #0f172a;
+      border-radius: 12px;
+      padding: 12px;
+      border: 1px solid #334155;
+    }
+
+    .compare-col h3 {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+
+    .compare-col.existing h3 { color: #64748b; }
+    .compare-col.new-data h3 { color: #6366f1; }
+
+    .compare-field {
+      margin-bottom: 8px;
+    }
+
+    .compare-field .field-label {
+      font-size: 9px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #475569;
+      margin-bottom: 2px;
+    }
+
+    .compare-field .field-value {
+      font-size: 12px;
+      color: #cbd5e1;
+      word-break: break-word;
+    }
+
+    .compare-field .field-value.empty {
+      color: #334155;
+      font-style: italic;
+    }
+
+    .compare-field .field-value.changed {
+      color: #a5b4fc;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-modal {
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s;
+    }
+
+    .btn-modal:active { transform: scale(0.97); }
+
+    .btn-update { background: #6366f1; color: white; }
+    .btn-new { background: #1e293b; color: #94a3b8; border: 1px solid #334155; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Network</h1>
+    <div class="subtitle">AI-powered contact logger</div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="card">
+    <label>New Contact — just talk</label>
+    <textarea
+      id="transcript"
+      placeholder="e.g. I met John Smith at the Brown career fair yesterday. He's a software engineer at Google, graduating next year. His email is john@gmail.com. I should follow up about the internship role he mentioned..."
+      autocomplete="off"
+      autocorrect="on"
+      spellcheck="true"
+    ></textarea>
+    <div class="mic-hint">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/>
+        <line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+      Tap the mic on your iPhone keyboard to dictate
+    </div>
+  </div>
+
+  <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">
+    Add to Network
+  </button>
+</div>
+
+<!-- Duplicate confirmation modal -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>Possible Duplicate</h2>
+    <div class="modal-sub" id="modal-sub">This person may already be in your network.</div>
+    <div class="compare-grid" id="compare-grid"></div>
+    <div class="modal-actions">
+      <button class="btn-modal btn-update" onclick="handleModalAction('update')">Update Existing</button>
+      <button class="btn-modal btn-new" onclick="handleModalAction('new')">Add as New</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast">
+  <div class="toast-title" id="toast-title"></div>
+  <div class="toast-body" id="toast-body"></div>
+  <div class="toast-missing" id="toast-missing" style="display:none"></div>
+</div>
+
+<script>
+  const FIELD_LABELS = {
+    fullName: 'Full Name',
+    organization: 'Organization',
+    role: 'Role / Title',
+    howMet: 'How Met',
+    whereMet: 'Where Met',
+    dateMet: 'Date Met',
+    email: 'Email',
+    phone: 'Phone',
+    linkedin: 'LinkedIn',
+    interests: 'Interests',
+    notes: 'Notes',
+    followUp: 'Follow Up?',
+    followUpNotes: 'Follow Up Notes',
+    lastContacted: 'Last Contacted',
+  };
+
+  let pendingDuplicateData = null;
+  let toastTimer = null;
+
+  async function handleSubmit() {
+    const transcript = document.getElementById('transcript').value.trim();
+    if (!transcript) {
+      showToast('error', 'Nothing to submit', 'Type or dictate something first.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript, today: new Date().toISOString().slice(0, 10) }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      if (data.duplicate) {
+        pendingDuplicateData = data;
+        showDuplicateModal(data);
+      } else {
+        onSuccess(data);
+      }
+    } catch (err) {
+      showToast('error', 'Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleModalAction(action) {
+    hideDuplicateModal();
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          extracted: pendingDuplicateData.extracted,
+          rowIndex: pendingDuplicateData.rowIndex,
+          today: new Date().toISOString().slice(0, 10),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Something went wrong');
+      onSuccess(data);
+    } catch (err) {
+      showToast('error', 'Error', err.message);
+    } finally {
+      setLoading(false);
+      pendingDuplicateData = null;
+    }
+  }
+
+  function onSuccess(data) {
+    document.getElementById('transcript').value = '';
+    const name = data.name || 'Contact';
+    const action = data.action === 'update' ? 'Updated' : 'Added';
+    showToast('success', `${action}: ${name}`, '', data.missingFields);
+  }
+
+  function showDuplicateModal(data) {
+    const existing = data.existing;
+    const extracted = data.extracted;
+
+    document.getElementById('modal-sub').textContent =
+      `"${extracted.fullName}" looks like someone already in your network. What would you like to do?`;
+
+    const grid = document.getElementById('compare-grid');
+    const fields = Object.keys(FIELD_LABELS);
+
+    let existingHtml = '<div class="compare-col existing"><h3>Existing</h3>';
+    let newHtml = '<div class="compare-col new-data"><h3>New Info</h3>';
+
+    fields.forEach(key => {
+      const label = FIELD_LABELS[key];
+      const existVal = existing[key] || '';
+      const newVal = extracted[key] || '';
+      const changed = newVal && newVal !== existVal;
+
+      existingHtml += `<div class="compare-field">
+        <div class="field-label">${label}</div>
+        <div class="field-value ${existVal ? '' : 'empty'}">${existVal || '—'}</div>
+      </div>`;
+
+      newHtml += `<div class="compare-field">
+        <div class="field-label">${label}</div>
+        <div class="field-value ${newVal ? (changed ? 'changed' : '') : 'empty'}">${newVal || '—'}</div>
+      </div>`;
+    });
+
+    existingHtml += '</div>';
+    newHtml += '</div>';
+    grid.innerHTML = existingHtml + newHtml;
+
+    document.getElementById('modal-overlay').classList.add('show');
+  }
+
+  function hideDuplicateModal() {
+    document.getElementById('modal-overlay').classList.remove('show');
+  }
+
+  function showToast(type, title, body, missingFields) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-body').textContent = body;
+
+    const missingEl = document.getElementById('toast-missing');
+    if (missingFields && missingFields.length > 0) {
+      missingEl.textContent = 'Missing: ' + missingFields.join(', ');
+      missingEl.style.display = 'block';
+    } else {
+      missingEl.style.display = 'none';
+    }
+
+    toast.className = `show ${type}`;
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.className = ''; }, 5000);
+  }
+
+  function setLoading(loading) {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = loading;
+    btn.innerHTML = loading
+      ? '<span class="spinner"></span>Processing...'
+      : 'Add to Network';
+  }
+
+  // Close modal on overlay tap
+  document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) hideDuplicateModal();
+  });
+
+  // Close toast on tap
+  document.getElementById('toast').addEventListener('click', function() {
+    this.className = '';
+  });
+</script>
+
+</body>
+</html>
